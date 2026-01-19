@@ -23,7 +23,7 @@ Log Table
     ...    # +-------+-----+------+
     ...    # | Bob   | 25  | LA   |
     ...    # +-------+-----+------+
-    ...    
+    ...
     ...    # Example 2: Nested data (2 levels) - Address history
     ...    | ${addr1}    Create Dictionary    street=Main St    zip=10001
     ...    | ${addr2}    Create Dictionary    street=5th Ave    zip=10002
@@ -52,17 +52,25 @@ Log Table
     ...    # |       +---------+-------+
     ...    # |       | Pine Rd | 90003 |
     ...    # +-------+---------+-------+
-    ...    
+    ...
     ...    # Example 3: Skip console output
     ...    | Log Table    ${table}    console=${False}
     ...    == Notes ==
     ...    - Header background: grey (#d3d3d3)
     ...    - Cell background: yellow (#ffffe0)
+    ...    - Automatically detects input format (JSON string or list)
     ...    - Supports recursive nested dictionaries
-    ...    - Validates structure consistency across all rows
     ...    - When console=${False}, text table generation is skipped for better performance
 
-    [Arguments]    ${table_list}    ${console}=${True}
+    [Arguments]    ${table_data}    ${console}=${True}
+
+    # Auto-detect input format and convert if needed
+    ${type}    Evaluate    type($table_data).__name__
+    IF    '${type}' == 'str'
+        ${table_list}    Evaluate    json.loads('''${table_data}''')    json
+    ELSE
+        ${table_list}    Set Variable    ${table_data}
+    END
 
     # STEP 1: Analyze the table structure
     # WHY: We need to understand the nested structure to generate proper headers with rowspan/colspan
@@ -98,10 +106,10 @@ _Html Based Analyze Table Structure
     FOR    ${row}    IN    @{table_list}
         # Extract structure from this row (recursive for nested fields)
         ${current_structure}    _Html Based Extract Structure    ${row}    ${1}
-        
+
         # Merge with existing structure (handles fields that appear in some rows but not others)
         ${header_structure}    _Html Based Merge Structures    ${header_structure}    ${current_structure}
-        
+
         # Track maximum nesting depth (determines number of header rows needed)
         ${row_depth}    _Html Based Calculate Depth    ${current_structure}
         IF    ${row_depth} > ${max_depth}
@@ -673,7 +681,7 @@ _Text Based Render Header Grid
 
     ${lines}    Create List
     ${content_rows}    Create List
-    
+
     # First pass: identify rows with content
     FOR    ${row_idx}    IN RANGE    ${max_depth}
         ${row}    Set Variable    ${grid}[${row_idx}]
@@ -697,7 +705,7 @@ _Text Based Render Header Grid
             Append To List    ${content_rows}    ${row_idx}
         END
     END
-    
+
     # Second pass: render content rows with separators
     ${num_content_rows}    Get Length    ${content_rows}
     FOR    ${i}    IN RANGE    ${num_content_rows}
@@ -705,7 +713,7 @@ _Text Based Render Header Grid
         ${row}    Set Variable    ${grid}[${row_idx}]
         ${line}    _Text Based Render Header Grid Row    ${row}    ${row_idx}    ${grid}    ${col_info}
         Append To List    ${lines}    ${line}
-        
+
         # Add separator between rows (not after last)
         IF    ${i} < ${num_content_rows} - 1
             ${next_row_idx}    Set Variable    ${content_rows}[${i + 1}]
@@ -769,7 +777,7 @@ _Text Based Generate Row Separator
     ${num_parts}    Get Length    ${parts}
     FOR    ${i}    IN RANGE    ${num_parts}
         ${part}    Set Variable    ${parts}[${i}]
-        
+
         # Add left junction
         IF    ${i} == 0
             # First column - check if it has dashes (horizontal line)
@@ -784,7 +792,7 @@ _Text Based Generate Row Separator
             ${prev_part}    Set Variable    ${parts}[${i - 1}]
             ${has_left_dash}    Evaluate    '-' in '''${prev_part}'''
             ${has_right_dash}    Evaluate    '-' in '''${part}'''
-            
+
             # Use '+' if at least one side has dashes, '|' if both sides are spaces
             IF    ${has_left_dash} or ${has_right_dash}
                 ${sep}    Set Variable    ${sep}+${part}
@@ -793,7 +801,7 @@ _Text Based Generate Row Separator
             END
         END
     END
-    
+
     # Add right junction - check if last part has dashes
     ${last_part}    Set Variable    ${parts}[${num_parts - 1}]
     ${has_dash}    Evaluate    '-' in '''${last_part}'''
@@ -802,7 +810,7 @@ _Text Based Generate Row Separator
     ELSE
         ${sep}    Set Variable    ${sep}|
     END
-    
+
     RETURN    ${sep}
 
 
@@ -912,23 +920,23 @@ _Text Based Generate Body Rows
 
     FOR    ${data_row_idx}    IN RANGE    ${num_data_rows}
         ${row_data}    Set Variable    ${table_list}[${data_row_idx}]
-        
+
         # Extract cells for this data row
         ${cells}    _Html Based Extract Row Cells    ${row_data}    ${header_structure}
-        
+
         # Calculate how many text rows needed
         ${num_text_rows}    _Html Based Calculate Max Nested Rows    ${cells}
-        
+
         # Build grid for this data row
         ${grid}    _Text Based Build Body Grid    ${cells}    ${num_text_rows}    ${col_info}
-        
+
         # Render grid rows
         ${row_lines}    _Text Based Render Body Grid    ${grid}    ${num_text_rows}    ${col_info}
-        
+
         FOR    ${line}    IN    @{row_lines}
             Append To List    ${all_lines}    ${line}
         END
-        
+
         # Add separator between data rows (not after last)
         IF    ${data_row_idx} < ${num_data_rows} - 1
             ${sep}    _Text Based Generate Data Row Separator    ${col_info}
@@ -945,7 +953,7 @@ _Text Based Build Body Grid
 
     ${num_cols}    Get Length    ${col_info}
     ${grid}    Create List
-    
+
     # Initialize grid
     FOR    ${row}    IN RANGE    ${num_text_rows}
         ${grid_row}    Create List
@@ -981,7 +989,7 @@ _Text Based Fill Body Grid
             # EXAMPLE: 2 nested items with 2 rows each → rows 0-1 for item1, rows 2-3 for item2
             ${nested_cells_list}    Get From Dictionary    ${cell}    nested_cells
             ${current_row}    Set Variable    ${row_offset}
-            
+
             FOR    ${nested_cells}    IN    @{nested_cells_list}
                 # Calculate how many rows this nested item needs
                 ${nested_rows}    _Html Based Calculate Max Nested Rows    ${nested_cells}
@@ -995,14 +1003,14 @@ _Text Based Fill Body Grid
             # WHY: Non-nested cells must span all rows generated by sibling nested cells
             ${value}    Get From Dictionary    ${cell}    value
             ${cell_info}    Create Dictionary    value=${value}    rowspan=${num_text_rows}    colspan=${leaf_count}    col_start=${current_col}    start_row=${row_offset}
-            
+
             # CRITICAL: Store same cell reference in all rows it spans
             # WHY: Enables rowspan detection via object identity comparison
             ${end_row}    Evaluate    ${row_offset} + ${num_text_rows}
             FOR    ${r}    IN RANGE    ${row_offset}    ${end_row}
                 Set List Value    ${grid}[${r}]    ${current_col}    ${cell_info}
             END
-            
+
             # Mark colspan spans with "SPAN" string
             FOR    ${c}    IN RANGE    1    ${leaf_count}
                 ${span_col}    Evaluate    ${current_col} + ${c}
@@ -1026,7 +1034,7 @@ _Text Based Render Body Grid
         ${row}    Set Variable    ${grid}[${row_idx}]
         ${line}    _Text Based Render Body Grid Row    ${row}    ${row_idx}    ${col_info}
         Append To List    ${lines}    ${line}
-        
+
         # Add separator between text rows (not after last)
         IF    ${row_idx} < ${num_text_rows} - 1
             ${next_row}    Set Variable    ${grid}[${row_idx + 1}]

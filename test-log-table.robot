@@ -195,3 +195,25 @@ Test_Generate_Table_With_4_Level_Nested_Data
 
     # Generate HTML table
     Log Table    ${table_list}
+
+
+Test_Generate_Table_With_Real_Alarm_Data
+    [Documentation]
+    ...    = SLOGAN: =
+    ...    Test the Log Table keyword with real alarm data from JSON string.
+    ...    = PREREQ: =
+    ...    = STEPS: =
+    ...    - Pass JSON string directly to Log Table.
+    ...    - Generate HTML and text tables.
+    ...    == Pass ==
+    ...    - Tables are generated successfully with all alarm fields.
+    ...    == Fail ==
+    ...    - Keyword fails or produces invalid output.
+    ...
+    ...    === Test Case Version 1.0 ===
+
+    [Tags]    TEST
+
+    ${json_data}    Set Variable    [{"alarmName": "CilConsumercommunicationfailure", "category": "ProcessingErrorAlarm", "code": 1901610, "description": "could not process segments", "eventTime": "2026-01-19T06:45:06.139167+01:00", "expires": 843, "faultyResource": "eric-bss-edm-publishing-6d77b4479f-w8t4p.kronos-beam---dsi-dev3-system", "probableCause": 22, "serviceName": "eric-bss-edm-publishing", "severity": "Critical", "specificProblem": "CIL Communication Failure", "vendor": 193}, {"alarmName": "CilConsumercommunicationfailure", "category": "ProcessingErrorAlarm", "code": 1901610, "description": "could not process segments", "eventTime": "2026-01-19T06:45:05.443342+01:00", "expires": 842, "faultyResource": "eric-bss-edm-publishing-6d77b4479f-5jjvl.kronos-beam---dsi-dev3-system", "probableCause": 22, "serviceName": "eric-bss-edm-publishing", "severity": "Critical", "specificProblem": "CIL Communication Failure", "vendor": 193}]
+
+    Log Table    ${json_data}
